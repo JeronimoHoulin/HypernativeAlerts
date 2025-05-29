@@ -1,0 +1,11 @@
+[project]
+name = "HypernativeAlerts"
+version = "0.1.0"
+description = "HN alerts x DAO"
+readme = "README.md"
+dependencies = [
+    "pandas>=2.2.3",
+    "python-dotenv>=1.1.0",
+    "requests>=2.32.3",
+    "streamlit>=1.45.1",
+]
