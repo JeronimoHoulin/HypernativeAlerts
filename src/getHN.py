@@ -1,5 +1,5 @@
-from login import header
-from channels import channels
+from src.login import header
+from src.channels import channels
 import requests
 import json
 import os

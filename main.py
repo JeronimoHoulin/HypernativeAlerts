@@ -1,8 +1,9 @@
 import streamlit as st
 
-from src.getHN import get_hn_data
+from src.getHN import get_hn_monitors
 
-df = get_hn_data()
+df = get_hn_monitors()
+print(df)
 
 #Start cleaining HN alerts.. 
 
