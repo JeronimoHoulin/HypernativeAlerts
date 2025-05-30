@@ -123,6 +123,7 @@ def get_hn_monitors():
                     monitor_protocol, monitor_address, monitor_symbol, monitor_label
                 ) = parsed_watchlist
                 flattened_data.append({
+                    "fullSuiteName": parsed_suit, 
                     "suitContractType": contract_type,
                     "suitBlockchain": blockchain,
                     "suitProtocol": protocol,
@@ -165,6 +166,7 @@ def get_hn_monitors():
                     monitor_protocol, monitor_address, monitor_symbol, monitor_label
                 ) = parsed_custom_agent
                 flattened_data.append({
+                    "fullSuiteName": parsed_suit, 
                     "suitContractType": contract_type,
                     "suitBlockchain": blockchain,
                     "suitProtocol": protocol,
