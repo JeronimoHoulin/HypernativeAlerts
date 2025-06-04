@@ -51,13 +51,15 @@ for client in valid_clients:
             if st.checkbox(f"📍 {position_title}", key=f"{client}_{suite_addr}"):
                 for _, row in df_suite.iterrows():
                     alert = row.get("monitorLabel", "Unnamed Alert")
+                    monitor_type = row.get("monitorType", "Unknown Type")
                     monitor_symbol = row.get("monitorSymbol", "Unnamed Symbol")
                     monitor_addr = row.get("monitorAddress")
-
+                    monitor_name = row.get("fullMonitorName", "Unnamed Monitor")
+                    monitor = row.get("monitor", "Unknown Monitor")
                     is_tagged = not df_client[
                         (df_client["monitorAddress"] == monitor_addr) &
                         (df_client["monitorLabel"] == alert)
                     ].empty
 
                     flag = "✅" if is_tagged else "❌"
-                    st.markdown(f"- {flag} {alert} {monitor_symbol}")
+                    st.markdown(f"- {flag} {monitor}: {monitor_type} - {monitor_name}")

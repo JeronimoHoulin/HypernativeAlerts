@@ -130,6 +130,8 @@ def get_hn_monitors():
                     "suitAddress": address,
                     "suitSymbol": symbol,
                     "suitLabel": label,
+                    "fullMonitorName": watchlist_data["data"]["name"],
+                    "monitorType": "Watchlist",
                     "monitorRiskID": risk_id,
                     "monitorContractType": monitor_contract_type,
                     "monitorBlockchain": monitor_blockchain,
@@ -138,7 +140,7 @@ def get_hn_monitors():
                     "monitorSymbol": monitor_symbol,
                     "monitorLabel": monitor_label,
                     "monitorAlertChannels": alert_channels,
-                    "monitorType": "Watchlist",
+                    "monitor": "Watchlist",
                     "Client": client_dao
                 })
             except Exception as e:
@@ -157,6 +159,7 @@ def get_hn_monitors():
                     channel["name"]
                     for channel in agent_data["data"]["alertPolicies"][0]["channelsConfigurations"]
                 ]
+                agent_type = agent_data["data"]["agentType"]
                 client_dao = next(
                     (channel_dao_map[name] for name in alert_channels if name in channel_dao_map),
                     "None"
@@ -173,6 +176,8 @@ def get_hn_monitors():
                     "suitAddress": address,
                     "suitSymbol": symbol,
                     "suitLabel": label,
+                    "fullMonitorName": agent_data["data"]["agentName"],
+                    "monitorType": agent_type,
                     "monitorRiskID": risk_id,
                     "monitorContractType": monitor_contract_type,
                     "monitorBlockchain": monitor_blockchain,
@@ -181,7 +186,7 @@ def get_hn_monitors():
                     "monitorSymbol": monitor_symbol,
                     "monitorLabel": monitor_label,
                     "monitorAlertChannels": alert_channels,
-                    "monitorType": "Custom Agent",
+                    "monitor": "Custom Agent",
                     "Client": client_dao
                 })
             except Exception as e:
