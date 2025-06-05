@@ -34,7 +34,7 @@ valid_clients = [c for c in client_groups if pd.notnull(c)]
 
 for client in valid_clients:
     df_client = client_groups[client]
-    client_suites = df_client["monitorAddress"].unique()
+    client_suites = df_client["fullSuiteName"].unique()
 
     with st.expander(f"🛡️ {client}", expanded=False):
         for suite_addr in client_suites:
