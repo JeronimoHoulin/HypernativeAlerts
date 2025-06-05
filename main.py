@@ -21,7 +21,7 @@ df = load_data()
 df.fillna("", inplace=True)
 
 # Build lookup tables for all Suites and all Monitors
-suites = df["monitorAddress"].unique()
+suites = df["fullSuiteName"].unique()
 
 # Group the full DataFrame by monitorAddress to get all monitors per suite
 suite_monitors = dict(tuple(df.groupby("monitorAddress", sort=False)))
