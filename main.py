@@ -12,20 +12,17 @@ st.title("📡 Hypernative Alerts Dashboard")
 
 # Load and sanitize DataFrame
 df = load_data()
-
 # Drop rows with essential missing data
 #essential_cols = ["Client", "monitorAddress", "monitorSymbol", "monitorLabel", "suitProtocol", monitorSymbol"]
 #df = df.dropna(subset=essential_cols)
+# df.to_csv("hn_monitors.csv", index=False)  # Save to CSV for debugging
 
+# df = pd.read_csv('hn_monitors.csv')
 # Optional: fill NAs in non-essential fields to avoid rendering issues
 df.fillna("", inplace=True)
 
-# Build lookup tables for all Suites and all Monitors
-suites = df["monitorAddress"].unique()
-
 # Group the full DataFrame by monitorAddress to get all monitors per suite
-suite_monitors = dict(tuple(df.groupby("monitorAddress", sort=False)))
-
+suite_monitors = dict(tuple(df.groupby("fullSuiteName", sort=False)))
 # Group original DF by Client for tagging reference
 client_groups = dict(tuple(df.groupby("Client", sort=True)))
 
@@ -34,8 +31,7 @@ valid_clients = [c for c in client_groups if pd.notnull(c)]
 
 for client in valid_clients:
     df_client = client_groups[client]
-    client_suites = df_client["monitorAddress"].unique()
-
+    client_suites = df_client["fullSuiteName"].unique()
     with st.expander(f"🛡️ {client}", expanded=False):
         for suite_addr in client_suites:
             df_suite = suite_monitors.get(suite_addr)
