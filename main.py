@@ -21,7 +21,7 @@ df = load_data()
 df.fillna("", inplace=True)
 
 # Build lookup tables for all Suites and all Monitors
-suites = df["fullSuiteName"].unique()
+suites = df["monitorAddress"].unique()
 
 # Group the full DataFrame by monitorAddress to get all monitors per suite
 suite_monitors = dict(tuple(df.groupby("monitorAddress", sort=False)))
@@ -34,7 +34,7 @@ valid_clients = [c for c in client_groups if pd.notnull(c)]
 
 for client in valid_clients:
     df_client = client_groups[client]
-    client_suites = df_client["fullSuiteName"].unique()
+    client_suites = df_client["monitorAddress"].unique()
 
     with st.expander(f"🛡️ {client}", expanded=False):
         for suite_addr in client_suites:
