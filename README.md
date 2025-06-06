@@ -7,3 +7,6 @@ To run this code, you need to input HyperNative API keys in a .env file with the
 
 ID_HYPERNATIVE=<HN_ID>
 KEY_HYPERNATIVE=<HN_KEY>
+
+For activating venv (UV) on Windows (bash): source .venv/Scripts/activate
+To run the streamlit app locally run: streamlit run main.py

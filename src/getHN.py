@@ -94,6 +94,7 @@ def get_hn_monitors():
     }
 
     flattened_data = []
+    print("Processing Hypernative Security Suite data...")
 
     for suit in response["data"]["results"]:
         print(f"Processing suit: {suit['name']}")
@@ -106,7 +107,10 @@ def get_hn_monitors():
             try:
                 watchlist_endpoint = f"https://api.hypernative.xyz/watchlists/{watchlist['id']}/"
                 watchlist_data = requests.get(watchlist_endpoint, headers=header).json()
-                print(f"Processing watchlist: {watchlist_data['data']['name']} for suit: {suit['name']}")
+                monitor_id = watchlist_data["data"]["id"]
+                #print(watchlist_data['data']['alertPolicies']['channelsConfigurations']['name'])
+                
+                #print(f"Processing watchlist: {watchlist_data['data']['name']} for suit: {suit['name']}")
                 parsed_watchlist = parse_watchlist_name(watchlist_data["data"]["name"])
                 if parsed_watchlist is None:
                     continue
@@ -140,18 +144,20 @@ def get_hn_monitors():
                     "monitorSymbol": monitor_symbol,
                     "monitorLabel": monitor_label,
                     "monitorAlertChannels": alert_channels,
+                    "monitorLink": f"https://app.hypernative.xyz/watchlist/{monitor_id}",
                     "monitor": "Watchlist",
                     "Client": client_dao
                 })
             except Exception as e:
-                print(f"Error processing watchlist {watchlist['id']} for suit {suit['name']}: {e}")
+               #print(f"Error processing watchlist {watchlist['id']} for suit {suit['name']}: {e}")
                 continue
 
         for custom_agent in suit.get("customAgents", []):
             try:
                 agent_endpoint = f"https://api.hypernative.xyz/custom-agents/{custom_agent['id']}/"
                 agent_data = requests.get(agent_endpoint, headers=header).json()
-                print(f"Processing custom agent: {agent_data['data']['agentName']} for suit: {suit['name']}")
+                agent_id = agent_data["data"]["id"]
+               #print(f"Processing custom agent: {agent_data['data']['agentName']} for suit: {suit['name']}")
                 parsed_custom_agent = parse_custom_agent_name(agent_data["data"]["agentName"])
                 if parsed_custom_agent is None:
                     continue
@@ -186,11 +192,12 @@ def get_hn_monitors():
                     "monitorSymbol": monitor_symbol,
                     "monitorLabel": monitor_label,
                     "monitorAlertChannels": alert_channels,
+                    "monitorLink": f"https://app.hypernative.xyz/custom-agents?agentId={agent_id}",
                     "monitor": "Custom Agent",
                     "Client": client_dao
                 })
             except Exception as e:
-                print(f"Error processing custom agent {custom_agent['id']} for suit {suit['name']}: {e}")
+               #print(f"Error processing custom agent {custom_agent['id']} for suit {suit['name']}: {e}")
                 continue
 
     df = pd.DataFrame(flattened_data)

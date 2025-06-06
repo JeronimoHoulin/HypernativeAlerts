@@ -29,21 +29,21 @@ client_groups = dict(tuple(df.groupby("Client", sort=True)))
 # Filter out any invalid client names like None or NaN
 valid_clients = [c for c in client_groups if pd.notnull(c)]
 
+import ast
+
 for client in valid_clients:
     df_client = client_groups[client]
     client_suites = df_client["fullSuiteName"].unique()
+
     with st.expander(f"🛡️ {client}", expanded=False):
         for suite_addr in client_suites:
             df_suite = suite_monitors.get(suite_addr)
             if df_suite is None:
                 continue
 
-            #symbol = df_suite["suitLabel"].iloc[0] or "UnknownLabel"
-            #protocol = df_suite["suitProtocol"].iloc[0] or "UnknownProtocol"
-            full_suite_name = df_suite["fullSuiteName"].iloc[0] or "UnknownPosition" 
+            full_suite_name = df_suite["fullSuiteName"].iloc[0] or "UnknownPosition"
             position_title = f"{full_suite_name}"
 
-            # Use checkbox to toggle Suite (no nesting)
             if st.checkbox(f"📍 {position_title}", key=f"{client}_{suite_addr}"):
                 for _, row in df_suite.iterrows():
                     alert = row.get("monitorLabel", "Unnamed Alert")
@@ -52,10 +52,25 @@ for client in valid_clients:
                     monitor_addr = row.get("monitorAddress")
                     monitor_name = row.get("fullMonitorName", "Unnamed Monitor")
                     monitor = row.get("monitor", "Unknown Monitor")
-                    is_tagged = not df_client[
-                        (df_client["monitorAddress"] == monitor_addr) &
-                        (df_client["monitorLabel"] == alert)
-                    ].empty
+                    monitor_channels = row.get("monitorAlertChannels", [])
+
+                    if isinstance(monitor_channels, str):
+                        try:
+                            monitor_channels = ast.literal_eval(monitor_channels)
+                        except Exception:
+                            monitor_channels = []
+
+                    # Check if client name is found in any channel string (case-insensitive)
+                    client_clean = client.strip().lower()
+                    is_tagged = any(client_clean in channel.lower() for channel in monitor_channels)
 
                     flag = "✅" if is_tagged else "❌"
-                    st.markdown(f"- {flag} {monitor}: {monitor_type} - {monitor_name}")
+                    monitor_link = row.get("monitorLink", "")
+                    link_icon = f"[↗️](<{monitor_link}>)" if monitor_link else ""
+
+                    st.markdown(
+                        f"- {flag} {monitor}: {monitor_type} - {monitor_name} {link_icon} "
+                        f"------> Slack Channels: {monitor_channels}"
+                    )
+                    st.write(f"[DEBUG] Client: {client_clean}, Channels: {monitor_channels}")
+
