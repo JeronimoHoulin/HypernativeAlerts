@@ -72,5 +72,5 @@ for client in valid_clients:
                         f"- {flag} {monitor}: {monitor_type} - {monitor_name} {link_icon} "
                         f"------> Slack Channels: {monitor_channels}"
                     )
-                    st.write(f"[DEBUG] Client: {client_clean}, Channels: {monitor_channels}")
+                    #st.write(f"[DEBUG] Client: {client_clean}, Channels: {monitor_channels}")
 
