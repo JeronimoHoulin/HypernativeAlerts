@@ -54,12 +54,6 @@ for client in valid_clients:
                     monitor = row.get("monitor", "Unknown Monitor")
                     monitor_channels = row.get("monitorAlertChannels", [])
 
-                    if isinstance(monitor_channels, str):
-                        try:
-                            monitor_channels = ast.literal_eval(monitor_channels)
-                        except Exception:
-                            monitor_channels = []
-
                     # Check if client name is found in any channel string (case-insensitive)
                     client_clean = client.strip().lower()
                     is_tagged = any(client_clean in channel.lower() for channel in monitor_channels)
