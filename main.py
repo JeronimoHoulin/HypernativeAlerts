@@ -52,7 +52,15 @@ for client in valid_clients:
                     monitor_addr = row.get("monitorAddress")
                     monitor_name = row.get("fullMonitorName", "Unnamed Monitor")
                     monitor = row.get("monitor", "Unknown Monitor")
-                    monitor_channels = row.get("monitorAlertChannels", [])
+                    #monitor_channels = row.get("monitorAlertChannels", [])
+                    monitor_channels_raw = row.get("monitorAlertChannels", [])
+                    if isinstance(monitor_channels_raw, str):
+                        try:
+                            monitor_channels = ast.literal_eval(monitor_channels_raw)
+                        except Exception:
+                            monitor_channels = []
+                    else:
+                        monitor_channels = monitor_channels_raw
 
                     # Check if client name is found in any channel string (case-insensitive)
                     client_clean = client.strip().lower()
