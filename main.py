@@ -1,23 +1,21 @@
 import streamlit as st
 import pandas as pd
-from src.getHN import get_hn_monitors
-from dotenv import load_dotenv
 import os
 import ast
+from src.getHN import get_hn_monitors
 
-# Must be the very first Streamlit command
-st.set_page_config(page_title="Hypernative Alert Monitor", layout="wide")
-
-# Load environment variables
+from dotenv import load_dotenv
 load_dotenv()
+
+# --- Auth setup ---
 KPKUSERNAME = os.getenv("KPKUSERNAME")
 KPKPASSWORD = os.getenv("KPKPASSWORD")
 
-# Session state login check
+st.set_page_config(page_title="Hypernative Alert Monitor", layout="wide")
+
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
-# One-time login form
 if not st.session_state.authenticated:
     with st.form("login_form"):
         input_username = st.text_input("Username", type="password")
@@ -31,64 +29,108 @@ if not st.session_state.authenticated:
                 st.rerun()
             else:
                 st.error("Invalid username or password.")
-    st.stop()  # Stop further execution until authenticated
+    st.stop()
 
-# --- Authenticated User Flow ---
 st.title("📡 Hypernative Alerts Dashboard")
 
+# --- Utility functions ---
 @st.cache_data(show_spinner="Loading HN data...")
 def load_data():
     return get_hn_monitors()
 
+def parse_channels(raw):
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, str):
+        try:
+            parsed = ast.literal_eval(raw)
+            return parsed if isinstance(parsed, list) else []
+        except Exception:
+            return []
+    return []
+
+def is_assigned_to_client(row, client_name):
+    channels = parse_channels(row.get("monitorAlertChannels", []))
+    return any(client_name.lower() in str(c).lower() for c in channels)
+
+def show_monitor(row, channels, client_name):
+    monitor_name = row.get("fullMonitorName", "Unnamed Monitor")
+    monitor_type = row.get("monitorType", "Unknown Type")
+    monitor = row.get("monitor", "Unknown Monitor")
+    monitor_link = row.get("monitorLink", "")
+    monitor_desc = row.get("monitorDescription", "")
+    monitor_desc = (monitor_desc[:250] + "…") if len(monitor_desc) > 250 else monitor_desc
+
+    is_assigned = any(client_name.lower() in c.lower() for c in channels)
+    status_icon = "✅" if is_assigned else "❌"
+    link = f"[↗️]({monitor_link})" if monitor_link else ""
+    relevant_channels = [c for c in channels if client_name.lower() in c.lower()]
+
+    st.markdown(
+        f"- {status_icon} **{monitor}** | *{monitor_type}* | {monitor_name} {link}  \n"
+        f"&nbsp;&nbsp;&nbsp;&nbsp;📝 {monitor_desc}  \n"
+        f"&nbsp;&nbsp;&nbsp;&nbsp;🔔 Channels: `{', '.join(relevant_channels) or '—'}`"
+    )
+
+# --- Data load ---
 df = load_data()
 df.fillna("", inplace=True)
 
-suite_monitors = dict(tuple(df.groupby("fullSuiteName", sort=False)))
-client_groups = dict(tuple(df.groupby("Client", sort=True)))
-valid_clients = [c for c in client_groups if pd.notnull(c)]
+# --- Sidebar and client selection ---
+st.sidebar.title("👤 Select Client")
+clients = sorted(df["Client"].dropna().unique())
+selected_client = st.sidebar.selectbox("Choose a client", clients)
 
-for client in valid_clients:
-    df_client = client_groups[client]
-    client_suites = df_client["fullSuiteName"].unique()
-
-    with st.expander(f"🛡️ {client}", expanded=False):
-        for suite_addr in client_suites:
-            df_suite = suite_monitors.get(suite_addr)
-            if df_suite is None:
-                continue
-
-            position_title = df_suite["fullSuiteName"].iloc[0] or "UnknownPosition"
-            if st.checkbox(f"📍 {position_title}", key=f"{client}_{suite_addr}"):
-                for _, row in df_suite.iterrows():
-                    alert = row.get("monitorLabel", "Unnamed Alert")
-                    monitor_type = row.get("monitorType", "Unknown Type")
-                    monitor_symbol = row.get("monitorSymbol", "Unnamed Symbol")
-                    monitor_addr = row.get("monitorAddress")
-                    monitor_name = row.get("fullMonitorName", "Unnamed Monitor")
-                    monitor = row.get("monitor", "Unknown Monitor")
-                    
-                    monitor_channels_raw = row.get("monitorAlertChannels", [])
-                    if isinstance(monitor_channels_raw, str):
-                        try:
-                            monitor_channels = ast.literal_eval(monitor_channels_raw)
-                        except Exception:
-                            monitor_channels = []
-                    else:
-                        monitor_channels = monitor_channels_raw
-
-                    client_clean = client.strip().lower()
-                    is_tagged = any(client_clean in channel.lower() for channel in monitor_channels)
-
-                    flag = "✅" if is_tagged else "❌"
-                    monitor_link = row.get("monitorLink", "")
-                    link_icon = f"[↗️](<{monitor_link}>)" if monitor_link else ""
-
-                    st.markdown(
-                        f"- {flag} {monitor}: {monitor_type} - {monitor_name} {link_icon} "
-                        f"------> Slack Channels: {monitor_channels}"
-                    )
-
-# Refresh button
-if st.button("🔄 Refresh Data (5min..)"):
+if st.sidebar.button("🔄 Refresh Data"):
+    get_hn_monitors(force_refresh=True)  # refetch from API and cache new CSV
     st.cache_data.clear()
     st.rerun()
+
+# --- Client Summary ---
+df_client = df[df["Client"] == selected_client]
+suite_monitors = dict(tuple(df.groupby("fullSuiteName", sort=False)))
+client_suites = df_client["fullSuiteName"].unique()
+
+total_suits = df_client["fullSuiteName"].nunique()
+total_monitors = df_client.shape[0]
+total_unassigned = df_client.apply(
+    lambda row: not is_assigned_to_client(row, selected_client), axis=1
+).sum()
+
+st.markdown(f"## 🔎 Monitoring Overview for `{selected_client}`")
+st.info(f"**Client Summary:** 🛡️ {total_suits} Suits | 🔍 {total_monitors} Monitors | ❌ {total_unassigned} Missing Client Alert")
+
+# --- Display data by suite ---
+for suite in client_suites:
+    df_suite_all = suite_monitors.get(suite)
+    if df_suite_all is None:
+        continue
+
+    suite_title = df_suite_all["fullSuiteName"].iloc[0] or "Unnamed Suite"
+    st.markdown(f"---\n### 🧱 {suite_title}")
+
+    col1, col2 = st.columns([1, 5])
+    with col1:
+        st.write("**Blockchain:**", df_suite_all["suitBlockchain"].iloc[0])
+        st.write("**Protocol:**", df_suite_all["suitProtocol"].iloc[0])
+    with col2:
+        st.write("**Label:**", df_suite_all["suitLabel"].iloc[0])
+        st.write("**Address:**", df_suite_all["suitAddress"].iloc[0])
+
+    assigned_rows = []
+    unassigned_rows = []
+
+    for _, row in df_suite_all.iterrows():
+        channels = parse_channels(row.get("monitorAlertChannels", []))
+        assigned = any(selected_client.lower() in c.lower() for c in channels)
+        (assigned_rows if assigned else unassigned_rows).append((row, channels))
+
+    if assigned_rows:
+        st.markdown("#### ✅ Monitors Assigned to This Client")
+        for row, channels in assigned_rows:
+            show_monitor(row, channels, selected_client)
+
+    if unassigned_rows:
+        st.markdown("#### ❌ Monitors Missing Client Channel")
+        for row, channels in unassigned_rows:
+            show_monitor(row, channels, selected_client)
