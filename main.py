@@ -107,30 +107,30 @@ for suite in client_suites:
         continue
 
     suite_title = df_suite_all["fullSuiteName"].iloc[0] or "Unnamed Suite"
-    st.markdown(f"---\n### 🧱 {suite_title}")
 
-    col1, col2 = st.columns([1, 5])
-    with col1:
-        st.write("**Blockchain:**", df_suite_all["suitBlockchain"].iloc[0])
-        st.write("**Protocol:**", df_suite_all["suitProtocol"].iloc[0])
-    with col2:
-        st.write("**Label:**", df_suite_all["suitLabel"].iloc[0])
-        st.write("**Address:**", df_suite_all["suitAddress"].iloc[0])
+    with st.expander(f"🧱 {suite_title}", expanded=False):
+        col1, col2 = st.columns([1, 5])
+        with col1:
+            st.write("**Blockchain:**", df_suite_all["suitBlockchain"].iloc[0])
+            st.write("**Protocol:**", df_suite_all["suitProtocol"].iloc[0])
+        with col2:
+            st.write("**Label:**", df_suite_all["suitLabel"].iloc[0])
+            st.write("**Address:**", df_suite_all["suitAddress"].iloc[0])
 
-    assigned_rows = []
-    unassigned_rows = []
+        assigned_rows = []
+        unassigned_rows = []
 
-    for _, row in df_suite_all.iterrows():
-        channels = parse_channels(row.get("monitorAlertChannels", []))
-        assigned = any(selected_client.lower() in c.lower() for c in channels)
-        (assigned_rows if assigned else unassigned_rows).append((row, channels))
+        for _, row in df_suite_all.iterrows():
+            channels = parse_channels(row.get("monitorAlertChannels", []))
+            assigned = any(selected_client.lower() in c.lower() for c in channels)
+            (assigned_rows if assigned else unassigned_rows).append((row, channels))
 
-    if assigned_rows:
-        st.markdown("#### ✅ Monitors Assigned to This Client")
-        for row, channels in assigned_rows:
-            show_monitor(row, channels, selected_client)
+        if assigned_rows:
+            st.markdown("#### ✅ Monitors Assigned to This Client")
+            for row, channels in assigned_rows:
+                show_monitor(row, channels, selected_client)
 
-    if unassigned_rows:
-        st.markdown("#### ❌ Monitors Missing Client Channel")
-        for row, channels in unassigned_rows:
-            show_monitor(row, channels, selected_client)
+        if unassigned_rows:
+            st.markdown("#### ❌ Monitors Missing Client Channel")
+            for row, channels in unassigned_rows:
+                show_monitor(row, channels, selected_client)
