@@ -186,6 +186,15 @@ def get_hn_monitors(force_refresh=False):
                     risk_id, monitor_contract_type, monitor_blockchain,
                     monitor_protocol, monitor_address, monitor_symbol, monitor_label
                 ) = parsed_custom_agent
+
+                # Try to get ruleString safely
+                rule_string = ""
+                try:
+                    rule_string = agent_data["data"]["rule"]["ruleString"]
+                except KeyError as e:
+                    logging.warning(f"Missing ruleString in agent {agent_data['data']['agentName']} from suit {suit['name']}: {e}")
+                    rule_string = f"⚠️ Incomplete due to missing key: {e}"
+
                 flattened_data.append({
                     "fullSuiteName": suit['name'], 
                     "suitContractType": contract_type,
@@ -204,16 +213,20 @@ def get_hn_monitors(force_refresh=False):
                     "monitorSymbol": monitor_symbol,
                     "monitorLabel": monitor_label,
                     "monitorAlertChannels": alert_channels,
-                    "monitorDescription": agent_data["data"]["rule"]["ruleString"],
+                    "monitorDescription": rule_string,
                     "monitorLink": f"https://app.hypernative.xyz/custom-agents?agentId={agent_id}",
                     "monitor": "Custom Agent",
                     "Client": client_dao
                 })
+
             except Exception as e:
                 logging.warning(f"Custom agent failed for suit {suit['name']}: {e}")
 
+
         if i % 10 == 0 or i == len(suits):
             logging.info(f"Processed {i}/{len(suits)} suits...")
+    
+    
 
     df = pd.DataFrame(flattened_data)
     try:

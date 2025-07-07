@@ -43,11 +43,16 @@ def parse_channels(raw):
         return raw
     if isinstance(raw, str):
         try:
+            # Try to parse as a literal list
             parsed = ast.literal_eval(raw)
-            return parsed if isinstance(parsed, list) else []
+            if isinstance(parsed, list):
+                return parsed
         except Exception:
-            return []
+            pass
+        # Fallback: treat as comma-separated string
+        return [s.strip() for s in raw.split(",") if s.strip()]
     return []
+
 
 def is_assigned_to_client(row, client_name):
     channels = parse_channels(row.get("monitorAlertChannels", []))
@@ -79,6 +84,7 @@ df.fillna("", inplace=True)
 # --- Sidebar and client selection ---
 st.sidebar.title("👤 Select Client")
 clients = sorted(df["Client"].dropna().unique())
+clients = [c for c in clients if str(c).strip() != ""]
 selected_client = st.sidebar.selectbox("Choose a client", clients)
 
 if st.sidebar.button("🔄 Refresh Data"):
@@ -92,13 +98,28 @@ suite_monitors = dict(tuple(df.groupby("fullSuiteName", sort=False)))
 client_suites = df_client["fullSuiteName"].unique()
 
 total_suits = df_client["fullSuiteName"].nunique()
-total_monitors = df_client.shape[0]
-total_unassigned = df_client.apply(
-    lambda row: not is_assigned_to_client(row, selected_client), axis=1
-).sum()
+
+# --- Count assigned monitors before rendering summary ---
+total_assigned_monitors = 0
+total_unassigned_monitors = 0
+
+for suite in client_suites:
+    df_suite_all = suite_monitors.get(suite)
+    if df_suite_all is None:
+        continue
+
+    for _, row in df_suite_all.iterrows():
+        channels = parse_channels(row.get("monitorAlertChannels", []))
+        #assigned = any(selected_client.lower() in c.lower() for c in channels)
+        assigned = any(selected_client.strip().lower() in str(c).strip().lower() for c in channels)
+        if assigned:
+            total_assigned_monitors += 1
+        else:
+            total_unassigned_monitors += 1
 
 st.markdown(f"## 🔎 Monitoring Overview for `{selected_client}`")
-st.info(f"**Client Summary:** 🛡️ {total_suits} Suits | 🔍 {total_monitors} Monitors | ❌ {total_unassigned} Missing Client Alert")
+st.info(f"**Client Summary:** 🛡️ {total_suits} Suits | ✅ {total_assigned_monitors} Assigned Monitors | ❌ {total_unassigned_monitors} Missing Client Alert")
+
 
 # --- Display data by suite ---
 for suite in client_suites:
@@ -107,6 +128,8 @@ for suite in client_suites:
         continue
 
     suite_title = df_suite_all["fullSuiteName"].iloc[0] or "Unnamed Suite"
+    if suite_title == "pendle":
+        print(suite_title) 
 
     with st.expander(f"🧱 {suite_title}", expanded=False):
         col1, col2 = st.columns([1, 5])
