@@ -31,7 +31,7 @@ if not st.session_state.authenticated:
                 st.error("Invalid username or password.")
     st.stop()
 
-st.title("📡 Hypernative Alerts Dashboard")
+st.title("📡 Hypernative Monitors Dashboard")
 
 # --- Utility functions ---
 @st.cache_data(show_spinner="Loading HN data...")
@@ -118,7 +118,7 @@ for suite in client_suites:
             total_unassigned_monitors += 1
 
 st.markdown(f"## 🔎 Monitoring Overview for `{selected_client}`")
-st.info(f"**Client Summary:** 🛡️ {total_suits} Suits | ✅ {total_assigned_monitors} Assigned Monitors | ❌ {total_unassigned_monitors} Missing Client Alert")
+st.info(f"**Client Summary:** 🛡️ {total_suits} Suits | ✅ {total_assigned_monitors} Assigned Monitors | ❌ {total_unassigned_monitors} Missing Client Monitors")
 
 
 # --- Display data by suite ---
