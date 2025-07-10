@@ -154,6 +154,6 @@ for suite in client_suites:
                 show_monitor(row, channels, selected_client)
 
         if unassigned_rows:
-            st.markdown("#### ❌ Missing Monitors")
+            st.markdown("#### ❌ Unassigned Monitors")
             for row, channels in unassigned_rows:
                 show_monitor(row, channels, selected_client)
