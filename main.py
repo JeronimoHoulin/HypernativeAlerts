@@ -67,7 +67,7 @@ def show_monitor(row, channels, client_name):
     monitor_desc = (monitor_desc[:250] + "…") if len(monitor_desc) > 250 else monitor_desc
 
     is_assigned = any(client_name.lower() in c.lower() for c in channels)
-    status_icon = "✅" if is_assigned else "❌"
+    status_icon = "✅" if is_assigned else "❔"
     link = f"[↗️]({monitor_link})" if monitor_link else ""
     relevant_channels = [c for c in channels if client_name.lower() in c.lower()]
 
@@ -118,7 +118,7 @@ for suite in client_suites:
             total_unassigned_monitors += 1
 
 st.markdown(f"## 🔎 Overview for `{selected_client}`")
-st.info(f"**Client Summary:** 🛡️ {total_suits} Suits | ✅ {total_assigned_monitors} Assigned Monitors | ❌ {total_unassigned_monitors} Missing Monitors")
+st.info(f"**Client Summary:** 🛡️ {total_suits} Suits | ✅ {total_assigned_monitors} Assigned Monitors | ❔ {total_unassigned_monitors} Unassigned Monitors")
 
 
 # --- Display data by suite ---
@@ -154,6 +154,6 @@ for suite in client_suites:
                 show_monitor(row, channels, selected_client)
 
         if unassigned_rows:
-            st.markdown("#### ❌ Unassigned Monitors")
+            st.markdown("#### ❔ Unassigned Monitors")
             for row, channels in unassigned_rows:
                 show_monitor(row, channels, selected_client)
