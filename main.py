@@ -117,8 +117,8 @@ for suite in client_suites:
         else:
             total_unassigned_monitors += 1
 
-st.markdown(f"## 🔎 Monitoring Overview for `{selected_client}`")
-st.info(f"**Client Summary:** 🛡️ {total_suits} Suits | ✅ {total_assigned_monitors} Assigned Monitors | ❌ {total_unassigned_monitors} Missing Client Monitors")
+st.markdown(f"## 🔎 Overview for `{selected_client}`")
+st.info(f"**Client Summary:** 🛡️ {total_suits} Suits | ✅ {total_assigned_monitors} Assigned Monitors | ❌ {total_unassigned_monitors} Missing Monitors")
 
 
 # --- Display data by suite ---
@@ -149,11 +149,11 @@ for suite in client_suites:
             (assigned_rows if assigned else unassigned_rows).append((row, channels))
 
         if assigned_rows:
-            st.markdown("#### ✅ Monitors Assigned to This Client")
+            st.markdown("#### ✅ Assigned Monitors")
             for row, channels in assigned_rows:
                 show_monitor(row, channels, selected_client)
 
         if unassigned_rows:
-            st.markdown("#### ❌ Monitors Missing Client Channel")
+            st.markdown("#### ❌ Missing Monitors")
             for row, channels in unassigned_rows:
                 show_monitor(row, channels, selected_client)
