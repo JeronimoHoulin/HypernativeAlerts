@@ -11,7 +11,7 @@ load_dotenv()
 KPKUSERNAME = os.getenv("KPKUSERNAME")
 KPKPASSWORD = os.getenv("KPKPASSWORD")
 
-st.set_page_config(page_title="Hypernative Alert Monitor", layout="wide")
+st.set_page_config(page_title="kpk Hypernative Monitors", layout="wide", page_icon="🚀")
 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
