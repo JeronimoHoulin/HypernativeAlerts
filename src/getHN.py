@@ -92,16 +92,6 @@ def parse_custom_agent_name(name):
 
 def get_hn_monitors(force_refresh=False):
     start_time = time.time()
-    csv_path = os.path.join(output_dir, "hn_data.csv")
-
-    if not force_refresh and os.path.exists(csv_path):
-        logging.info(f"Loading cached data from {csv_path}")
-        try:
-            df = pd.read_csv(csv_path)
-            logging.info(f"Loaded {len(df)} rows in {round(time.time() - start_time, 2)}s.")
-            return df
-        except Exception as e:
-            logging.warning(f"Failed to load CSV: {e}")
 
     logging.info("Fetching fresh data from Hypernative API...")
 
