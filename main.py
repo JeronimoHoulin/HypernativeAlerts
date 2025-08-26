@@ -55,7 +55,7 @@ def parse_channels(raw):
 
 
 def is_assigned_to_client(row, client_name):
-    channels = parse_channels(row.get("monitorAlertChannels", []))
+    channels = parse_channels(row.get("monitorAlertChannel", []))
     return any(client_name.lower() in str(c).lower() for c in channels)
 
 def show_monitor(row, channels, client_name):
@@ -88,7 +88,7 @@ clients = [c for c in clients if str(c).strip() != ""]
 selected_client = st.sidebar.selectbox("Choose a client", clients)
 
 if st.sidebar.button("🔄 Refresh Data"):
-    get_hn_monitors(force_refresh=True)  # refetch from API and cache new CSV
+    get_hn_monitors()  # refetch from API
     st.cache_data.clear()
     st.rerun()
 
@@ -109,7 +109,7 @@ for suite in client_suites:
         continue
 
     for _, row in df_suite_all.iterrows():
-        channels = parse_channels(row.get("monitorAlertChannels", []))
+        channels = parse_channels(row.get("monitorAlertChannel", []))
         #assigned = any(selected_client.lower() in c.lower() for c in channels)
         assigned = any(selected_client.strip().lower() in str(c).strip().lower() for c in channels)
         if assigned:
@@ -144,7 +144,8 @@ for suite in client_suites:
         unassigned_rows = []
 
         for _, row in df_suite_all.iterrows():
-            channels = parse_channels(row.get("monitorAlertChannels", []))
+            print(row, "\n")
+            channels = parse_channels(row.get("monitorAlertChannel", []))
             assigned = any(selected_client.lower() in c.lower() for c in channels)
             (assigned_rows if assigned else unassigned_rows).append((row, channels))
 

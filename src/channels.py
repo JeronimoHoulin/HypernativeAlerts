@@ -23,7 +23,7 @@ channels = [
     {"name": "GnosisDAO_GNO_token_alerts", "dao": "GnosisDAO"},
     {"name": "GnosisDAO action", "dao": "GnosisDAO"},
     {"name": "GnosisDAO reminders", "dao": "GnosisDAO"},
-    {"name": "Balancer monitoring", "dao": "Balancer"},
+    {"name": "Balancer Monitoring", "dao": "Balancer"},
     {"name": "ENS reminders", "dao": "ENS"},
     {"name": "kpk monitoring", "dao": "kpk"},
     {"name": "Gnosisltd monitoring", "dao": "GnosisLtd"},
