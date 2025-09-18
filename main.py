@@ -56,7 +56,8 @@ def parse_channels(raw):
 
 def is_assigned_to_client(row, client_name):
     channels = parse_channels(row.get("monitorAlertChannel", []))
-    return any(client_name.lower() in str(c).lower() for c in channels)
+    client_lower = client_name.lower().strip()
+    return any(client_lower in str(c).lower() for c in channels)
 
 def show_monitor(row, channels, client_name):
     monitor_name = row.get("fullMonitorName", "Unnamed Monitor")
@@ -66,10 +67,10 @@ def show_monitor(row, channels, client_name):
     monitor_desc = row.get("monitorDescription", "")
     monitor_desc = (monitor_desc[:250] + "…") if len(monitor_desc) > 250 else monitor_desc
 
-    is_assigned = any(client_name.lower() in c.lower() for c in channels)
+    is_assigned = any(client_name.lower().strip() in c.lower() for c in channels)
     status_icon = "✅" if is_assigned else "❔"
     link = f"[↗️]({monitor_link})" if monitor_link else ""
-    relevant_channels = [c for c in channels if client_name.lower() in c.lower()]
+    relevant_channels = [c for c in channels if client_name.lower().strip() in c.lower()]
 
     st.markdown(
         f"- {status_icon} **{monitor}** | *{monitor_type}* | {monitor_name} {link}  \n"
@@ -111,7 +112,7 @@ for suite in client_suites:
     for _, row in df_suite_all.iterrows():
         channels = parse_channels(row.get("monitorAlertChannel", []))
         #assigned = any(selected_client.lower() in c.lower() for c in channels)
-        assigned = any(selected_client.strip().lower() in str(c).strip().lower() for c in channels)
+        assigned = any(selected_client.lower().strip() in str(c).lower() for c in channels)
         if assigned:
             total_assigned_monitors += 1
         else:
@@ -144,9 +145,11 @@ for suite in client_suites:
         unassigned_rows = []
 
         for _, row in df_suite_all.iterrows():
-            print(row, "\n")
             channels = parse_channels(row.get("monitorAlertChannel", []))
-            assigned = any(selected_client.lower() in c.lower() for c in channels)
+            # Only print monitor recap for specific channels
+            if any(channel.lower() in ["morpho-action", "gearbox-action"] for channel in channels):
+                print(row, "\n")
+            assigned = any(selected_client.lower().strip() in c.lower() for c in channels)
             (assigned_rows if assigned else unassigned_rows).append((row, channels))
 
         if assigned_rows:
