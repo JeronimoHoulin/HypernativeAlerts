@@ -50,4 +50,8 @@ channels = [
     {"name": "riskpositions-database-channel", "dao": "None"},
     {"name": "hyp-alerts-dai-usdc-usdt", "dao": "None"},
     {"name": "Telegram-1", "dao": "None"},
+    {"name": "gearbox-action", "dao": "Gearbox"},
+    {"name": "gearbox-monitoring", "dao": "Gearbox"},
+    {"name": "morpho-action", "dao": "Morpho"},
+    {"name": "morpho-monitoring", "dao": "Morpho"},
 ]

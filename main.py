@@ -129,8 +129,6 @@ for suite in client_suites:
         continue
 
     suite_title = df_suite_all["fullSuiteName"].iloc[0] or "Unnamed Suite"
-    if suite_title == "pendle":
-        print(suite_title) 
 
     with st.expander(f"🧱 {suite_title}", expanded=False):
         col1, col2 = st.columns([1, 5])
@@ -146,9 +144,10 @@ for suite in client_suites:
 
         for _, row in df_suite_all.iterrows():
             channels = parse_channels(row.get("monitorAlertChannel", []))
-            # Only print monitor recap for specific channels
+
             if any(channel.lower() in ["morpho-action", "gearbox-action"] for channel in channels):
                 print(row, "\n")
+                
             assigned = any(selected_client.lower().strip() in c.lower() for c in channels)
             (assigned_rows if assigned else unassigned_rows).append((row, channels))
 
