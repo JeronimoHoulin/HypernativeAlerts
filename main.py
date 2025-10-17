@@ -36,7 +36,29 @@ st.title("📡 Hypernative Monitors Dashboard")
 # --- Utility functions ---
 @st.cache_data(show_spinner="Loading HN data...")
 def load_data():
-    return get_hn_monitors()
+    try:
+        # Create a progress bar for better user feedback
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        status_text.text("Starting data fetch...")
+        progress_bar.progress(10)
+        
+        # Use a placeholder to show we're working
+        placeholder = st.empty()
+        placeholder.info("🔄 Fetching data from Hypernative API... This may take 10+ minutes. Please keep this tab open.")
+        
+        result = get_hn_monitors()
+        
+        progress_bar.progress(100)
+        status_text.text("Data fetch completed!")
+        placeholder.empty()
+        
+        return result
+    except Exception as e:
+        st.error(f"Failed to load data: {e}")
+        st.error("The app will continue running. Try refreshing the data.")
+        return pd.DataFrame()
 
 def parse_channels(raw):
     if isinstance(raw, list):
@@ -79,21 +101,50 @@ def show_monitor(row, channels, client_name):
     )
 
 # --- Data load ---
-df = load_data()
-df.fillna("", inplace=True)
+# Check if we have cached data first
+if st.session_state.get('data_loaded', False):
+    st.info("📊 Using cached data. Click 'Refresh Data' to fetch latest information.")
+    df = load_data()
+else:
+    st.warning("⚠️ No cached data available. Click 'Refresh Data' to load data from API.")
+    df = pd.DataFrame(columns=['Client', 'fullSuiteName', 'monitorAlertChannel', 'fullMonitorName', 'monitorType', 'monitorDescription', 'monitorLink', 'monitor', 'suitBlockchain', 'suitProtocol', 'suitAddress', 'suitLabel'])
+
+if not df.empty:
+    df.fillna("", inplace=True)
+    st.session_state['data_loaded'] = True
 
 # --- Sidebar and client selection ---
 st.sidebar.title("👤 Select Client")
 clients = sorted(df["Client"].dropna().unique())
 clients = [c for c in clients if str(c).strip() != ""]
-selected_client = st.sidebar.selectbox("Choose a client", clients)
+
+if not clients:
+    st.warning("No clients available. Please refresh the data.")
+    selected_client = None
+else:
+    selected_client = st.sidebar.selectbox("Choose a client", clients)
 
 if st.sidebar.button("🔄 Refresh Data"):
-    get_hn_monitors()  # refetch from API
-    st.cache_data.clear()
-    st.rerun()
+    try:
+        with st.spinner("Refreshing data from Hypernative API... This may take several minutes."):
+            # Clear cache and fetch new data
+            st.cache_data.clear()
+            new_data = get_hn_monitors()
+            if not new_data.empty:
+                st.session_state['data_loaded'] = True
+                st.success("Data refreshed successfully!")
+            else:
+                st.error("No data received from API.")
+        st.rerun()
+    except Exception as e:
+        st.error(f"Failed to refresh data: {e}")
+        st.error("Please try again or check your connection.")
 
 # --- Client Summary ---
+if selected_client is None:
+    st.info("Please select a client from the sidebar to view their monitors.")
+    st.stop()
+
 df_client = df[df["Client"] == selected_client]
 suite_monitors = dict(tuple(df.groupby("fullSuiteName", sort=False)))
 client_suites = df_client["fullSuiteName"].unique()
@@ -144,9 +195,6 @@ for suite in client_suites:
 
         for _, row in df_suite_all.iterrows():
             channels = parse_channels(row.get("monitorAlertChannel", []))
-
-            if any(channel.lower() in ["morpho-action", "gearbox-action"] for channel in channels):
-                print(row, "\n")
                 
             assigned = any(selected_client.lower().strip() in c.lower() for c in channels)
             (assigned_rows if assigned else unassigned_rows).append((row, channels))

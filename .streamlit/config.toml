@@ -1,0 +1,18 @@
+[server]
+# Increase timeout settings
+runOnSave = true
+headless = true
+maxUploadSize = 200
+maxMessageSize = 200
+
+[logger]
+# Reduce logging verbosity
+level = "warning"
+
+[browser]
+# Disable automatic browser opening
+gatherUsageStats = false
+
+[client]
+# Increase client timeout
+showErrorDetails = true

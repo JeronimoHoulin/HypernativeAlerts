@@ -3,6 +3,8 @@ import time
 import logging
 import requests
 import pandas as pd
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from src.login import header
 from src.channels import channels
@@ -79,22 +81,45 @@ def parse_watchlist_name(name: str):
 
 def parse_custom_agent_name(name: str):
     parts = name.split(" ")
+    
+    # Handle edge cases with insufficient parts
+    if len(parts) < 2:
+        # For very short names, return a basic structure
+        if len(parts) == 1:
+            return parts[0], "[OTHER]", "", "", "", "", ""
+        else:
+            return None
+    
     risk_id = parts[0]
     contract_type = parts[1]
-    if contract_type in {"[VAULT]", "[EOA]", "[MULTISIG]", "[POOL]", "[OTHER]", "[ORACLE]", "[BRIDGE]", "[TIMELOCK]"}:
+    
+    # Normalize contract type to uppercase for comparison
+    contract_type_upper = contract_type.upper()
+    
+    if contract_type_upper in {"[VAULT]", "[EOA]", "[MULTISIG]", "[POOL]", "[OTHER]", "[ORACLE]", "[BRIDGE]", "[TIMELOCK]"}:
         blockchain = parts[2] if len(parts) > 2 else ""
         protocol = parts[3] if len(parts) > 3 else ""
         address = parts[4] if len(parts) > 4 else ""
         symbol = parts[5] if len(parts) > 5 else ""
-        label = parts[6] if len(parts) > 6 else ""
-    elif contract_type == "[TOKEN]":
+        label = " ".join(parts[6:]) if len(parts) > 6 else ""
+    elif contract_type_upper == "[TOKEN]":
         blockchain = parts[2] if len(parts) > 2 else ""
         protocol = ""
         address = parts[3] if len(parts) > 3 else ""
         symbol = parts[4] if len(parts) > 4 else ""
-        label = parts[5] if len(parts) > 5 else ""
+        label = " ".join(parts[5:]) if len(parts) > 5 else ""
     else:
-        return None
+        # Handle alternative format: [risk_id] blockchain protocol address symbol label
+        # This covers cases like "[29] Ethereum Gearbox 0x... rstETH 5%Volatility"
+        if len(parts) >= 4:
+            blockchain = parts[1] if len(parts) > 1 else ""
+            protocol = parts[2] if len(parts) > 2 else ""
+            address = parts[3] if len(parts) > 3 else ""
+            symbol = parts[4] if len(parts) > 4 else ""
+            label = " ".join(parts[5:]) if len(parts) > 5 else ""
+            contract_type = "[OTHER]"  # Default contract type for this format
+        else:
+            return None
     return risk_id, contract_type, blockchain, protocol, address, symbol, label
 
 
@@ -137,10 +162,21 @@ def get_hn_monitors():
     }
 
     session = requests.Session()
+    
+    # Add retry strategy for better reliability
+    retry_strategy = Retry(
+        total=3,
+        backoff_factor=1,
+        status_forcelist=[429, 500, 502, 503, 504],
+    )
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    
     flattened_rows = []
 
     try:
-        suits_resp = session.get(SUITS_ENDPOINT, headers=header, timeout=30).json()
+        suits_resp = session.get(SUITS_ENDPOINT, headers=header, timeout=10).json()
         suits = suits_resp.get("data", {}).get("results", [])
         logging.info(f"Found {len(suits)} suits to process.")
     except Exception as e:
@@ -165,7 +201,7 @@ def get_hn_monitors():
         for watchlist in suit.get("watchlists", []):
             try:
                 wl_endpoint = f"https://api.hypernative.xyz/watchlists/{watchlist['id']}/"
-                wl_data = session.get(wl_endpoint, headers=header, timeout=30).json().get("data", {})
+                wl_data = session.get(wl_endpoint, headers=header, timeout=10).json().get("data", {})
                 wl_id = wl_data.get("id")
                 wl_name = wl_data.get("name", "")
 
@@ -176,6 +212,11 @@ def get_hn_monitors():
                 alert_channels = extract_channels(wl_data.get("alertPolicies"))
                 # If there are no channels, still create one row with "None"
                 channels_for_rows = alert_channels or ["None"]
+                
+                # Debug: Check for morpho-action channel
+                if "morpho-action" in channels_for_rows:
+                    print(f"DEBUG - Found morpho-action in watchlist '{wl_name}'")
+                    print(f"DEBUG - Channels: {channels_for_rows}")
 
                 (
                     risk_id,
@@ -219,7 +260,7 @@ def get_hn_monitors():
         for custom_agent in suit.get("customAgents", []):
             try:
                 agent_endpoint = f"https://api.hypernative.xyz/custom-agents/{custom_agent['id']}/"
-                agent_resp = session.get(agent_endpoint, headers=header, timeout=30).json()
+                agent_resp = session.get(agent_endpoint, headers=header, timeout=10).json()
                 agent_data = agent_resp.get("data", {})
                 agent_id = agent_data.get("id")
                 agent_name = agent_data.get("agentName", "")
@@ -240,7 +281,8 @@ def get_hn_monitors():
                     logging.warning(
                         f"Missing ruleString in agent '{agent_name}' from suit '{suit.get('name','(unknown)')}': {e}"
                     )
-                    rule_string = f"⚠️ Incomplete due to missing ruleString"
+                    # Use the agent name as description when ruleString is missing
+                    rule_string = agent_name
 
                 (
                     risk_id,
@@ -283,6 +325,8 @@ def get_hn_monitors():
 
         if i % 10 == 0 or i == len(suits):
             logging.info(f"Processed {i}/{len(suits)} suits...")
+            # Add a small delay to prevent overwhelming the system
+            time.sleep(0.1)
 
     df = pd.DataFrame(flattened_rows)
 
