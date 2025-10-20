@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 import ast
-from src.getHN import get_hn_monitors
+from src.performance_optimizer import optimizer
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -34,30 +34,26 @@ if not st.session_state.authenticated:
 st.title("📡 Hypernative Monitors Dashboard")
 
 # --- Utility functions ---
-@st.cache_data(show_spinner="Loading HN data...")
-def load_data():
+@st.cache_data(ttl=300, show_spinner=False)  # 5 minute cache - disabled spinner to avoid duplicate loading messages
+def load_data(force_refresh=False):
     try:
-        # Create a progress bar for better user feedback
-        progress_bar = st.progress(0)
-        status_text = st.empty()
+        # Use limit for testing - set to 5 suits for quick testing
+        test_limit = 5 if st.session_state.get('test_mode', False) else None
+        df = optimizer.get_hn_monitors_optimized(force_refresh=force_refresh, limit_suits=test_limit)
         
-        status_text.text("Starting data fetch...")
-        progress_bar.progress(10)
+        # Validate that we got actual data
+        if df is None or df.empty:
+            st.warning("⚠️ No data returned from API. This might be a temporary issue.")
+            return pd.DataFrame()
         
-        # Use a placeholder to show we're working
-        placeholder = st.empty()
-        placeholder.info("🔄 Fetching data from Hypernative API... This may take 10+ minutes. Please keep this tab open.")
+        return df
         
-        result = get_hn_monitors()
-        
-        progress_bar.progress(100)
-        status_text.text("Data fetch completed!")
-        placeholder.empty()
-        
-        return result
     except Exception as e:
-        st.error(f"Failed to load data: {e}")
+        st.error(f"❌ Failed to load data: {str(e)}")
         st.error("The app will continue running. Try refreshing the data.")
+        # Log the full error for debugging
+        import traceback
+        st.error(f"Debug info: {traceback.format_exc()}")
         return pd.DataFrame()
 
 def parse_channels(raw):
@@ -101,17 +97,67 @@ def show_monitor(row, channels, client_name):
     )
 
 # --- Data load ---
-# Check if we have cached data first
-if st.session_state.get('data_loaded', False):
-    st.info("📊 Using cached data. Click 'Refresh Data' to fetch latest information.")
-    df = load_data()
-else:
-    st.warning("⚠️ No cached data available. Click 'Refresh Data' to load data from API.")
-    df = pd.DataFrame(columns=['Client', 'fullSuiteName', 'monitorAlertChannel', 'fullMonitorName', 'monitorType', 'monitorDescription', 'monitorLink', 'monitor', 'suitBlockchain', 'suitProtocol', 'suitAddress', 'suitLabel'])
+# Check if we should force refresh
+force_refresh = st.session_state.get('force_refresh', False)
+if force_refresh:
+    st.session_state.force_refresh = False  # Reset the flag
 
-if not df.empty:
+# Check if this is the first time loading data
+first_load = st.session_state.get('first_load', True)
+if first_load:
+    st.session_state.first_load = False
+    force_refresh = True  # Force fresh data on first load
+
+# Load data with minimal loading indicators
+if force_refresh:
+    with st.spinner("Loading data..."):
+        df = load_data(force_refresh=force_refresh)
+else:
+    # Check if we have cached data
+    if optimizer.is_cache_valid():
+        df = load_data(force_refresh=force_refresh)
+    else:
+        with st.spinner("Loading data..."):
+            df = load_data(force_refresh=True)
+
+if df.empty:
+    st.error("No data available. Please check your connection and try refreshing.")
+    st.info("The app will continue running. Click the 'Refresh Data' button to retry.")
+    # Show a more helpful message and don't create empty DataFrame
+    st.warning("⚠️ No data loaded. This could be due to:")
+    st.markdown("""
+    - Network connectivity issues
+    - API authentication problems  
+    - API rate limiting
+    - Server maintenance
+    
+    **Try clicking 'Refresh Data' to retry loading.**
+    """)
+    
+    # Show debug info even when no data
+    with st.expander("🔍 Debug Information", expanded=True):
+        st.write("**DataFrame Info:**")
+        st.write(f"- Shape: {df.shape}")
+        st.write(f"- Columns: {list(df.columns) if not df.empty else 'No columns'}")
+        st.write(f"- Is None: {df is None}")
+        st.write(f"- Is Empty: {df.empty}")
+        
+        # Try to show any cached data
+        try:
+            cached_data = optimizer.load_from_cache()
+            if cached_data is not None and not cached_data.empty:
+                st.write(f"**Cached Data Available:** {len(cached_data)} rows")
+                st.write("**Cached Columns:**", list(cached_data.columns))
+            else:
+                st.write("**No Cached Data Available")
+        except Exception as e:
+            st.write(f"**Cache Error:** {e}")
+    
+    st.stop()  # Stop the app if no data is available
+else:
     df.fillna("", inplace=True)
-    st.session_state['data_loaded'] = True
+    
+    # Data loaded successfully - no status messages needed
 
 # --- Sidebar and client selection ---
 st.sidebar.title("👤 Select Client")
@@ -125,20 +171,42 @@ else:
     selected_client = st.sidebar.selectbox("Choose a client", clients)
 
 if st.sidebar.button("🔄 Refresh Data"):
-    try:
-        with st.spinner("Refreshing data from Hypernative API... This may take several minutes."):
-            # Clear cache and fetch new data
-            st.cache_data.clear()
-            new_data = get_hn_monitors()
-            if not new_data.empty:
-                st.session_state['data_loaded'] = True
-                st.success("Data refreshed successfully!")
-            else:
-                st.error("No data received from API.")
+    # Set flag to force refresh and clear cache
+    st.session_state.force_refresh = True
+    st.cache_data.clear()
+    st.success("Cache cleared. Refreshing data...")
+    st.rerun()
+
+# Add cache status indicator
+if not df.empty:
+    if optimizer.is_cache_valid():
+        st.sidebar.success("✅ Using cached data")
+    else:
+        st.sidebar.info("🔄 Fresh data loaded")
+else:
+    st.sidebar.warning("⚠️ No data available")
+
+# Add debug information in sidebar
+with st.sidebar.expander("🔧 Debug Info", expanded=False):
+    st.write(f"**Data Rows:** {len(df)}")
+    st.write(f"**Cache Valid:** {optimizer.is_cache_valid()}")
+    st.write(f"**Force Refresh:** {force_refresh}")
+    st.write(f"**Test Mode:** {st.session_state.get('test_mode', False)}")
+    
+    if not df.empty:
+        st.write(f"**Clients Found:** {len(clients)}")
+        st.write(f"**Sample Client:** {clients[0] if clients else 'None'}")
+    
+    # Test mode toggle
+    test_mode = st.checkbox("Test Mode (5 suits only)", value=st.session_state.get('test_mode', False))
+    if test_mode != st.session_state.get('test_mode', False):
+        st.session_state.test_mode = test_mode
         st.rerun()
-    except Exception as e:
-        st.error(f"Failed to refresh data: {e}")
-        st.error("Please try again or check your connection.")
+    
+    if st.button("🗑️ Clear Cache"):
+        st.cache_data.clear()
+        st.success("Cache cleared!")
+        st.rerun()
 
 # --- Client Summary ---
 if selected_client is None:
